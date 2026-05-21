@@ -1,0 +1,2 @@
+include agentlog/cli.py
+include agentlog/__init__.py

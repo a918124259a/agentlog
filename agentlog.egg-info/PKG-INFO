@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: agentlog
+Version: 0.1.0
+Summary: Cross-platform AI Agent Action Tracker
+Requires-Python: >=3.9
+Dynamic: description
+Dynamic: requires-python
+Dynamic: summary
+
+Log, search, and replay what your AI agents did across all your tools.

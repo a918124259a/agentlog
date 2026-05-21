@@ -1,0 +1,9 @@
+MANIFEST.in
+setup.py
+agentlog/__init__.py
+agentlog/cli.py
+agentlog.egg-info/PKG-INFO
+agentlog.egg-info/SOURCES.txt
+agentlog.egg-info/dependency_links.txt
+agentlog.egg-info/entry_points.txt
+agentlog.egg-info/top_level.txt
