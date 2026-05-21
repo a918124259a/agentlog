@@ -1,10 +1,248 @@
 Metadata-Version: 2.4
 Name: agentlog
-Version: 0.1.0
-Summary: Cross-platform AI Agent Action Tracker
+Version: 0.2.0
+Summary: Cross-platform AI Agent Action Tracker — log, search, and replay what your AI agents did
+Home-page: https://github.com/a918124259a/agentlog
+Author: AgentForge Team
+Author-email: a918124259a@gmail.com
+Project-URL: Homepage, https://github.com/a918124259a/agentlog
+Project-URL: Issues, https://github.com/a918124259a/agentlog/issues
+Project-URL: Donate, https://github.com/sponsors/a918124259a
+Keywords: ai agent logging audit trail claude code codex cursor hermes
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Logging
+Classifier: Topic :: Software Development :: AI/ML
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Operating System :: OS Independent
 Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
 Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: project-url
 Dynamic: requires-python
 Dynamic: summary
 
-Log, search, and replay what your AI agents did across all your tools.
+# AgentLog 🕵️
+
+**Cross-platform AI Agent Action Tracker**
+
+Your AI agent forgets everything between sessions. **AgentLog doesn't.**
+
+AgentLog is a local-first CLI tool that logs every action your AI agents take — files changed, commands run, git commits made, API calls sent — across **all** your AI tools. Searchable. Replayable. Portable.
+
+```bash
+# Install
+pip install agentlog
+
+# Start tracking
+agentlog init
+
+# Log actions naturally
+agentlog track file src/app.py --operation modified
+agentlog track command 'pytest tests/'
+agentlog track note 'Fixed race condition in auth module'
+agentlog track git 'feat: add rate limiting' --hash abc1234f
+
+# Search everything
+agentlog search 'auth bug'
+# → Found 3 results...
+#   2026-05-21  [hermes] note: Fixed auth bug in login flow
+#   2026-05-20  [cursor] file: src/auth/login.ts
+#   2026-05-19  [codex]  commit: fix: auth token refresh race
+
+# Hand off context between sessions
+agentlog summary
+# → Generates a complete handoff document
+```
+
+## Why AgentLog?
+
+Every AI coding tool **forgets what it did** between sessions:
+
+- Claude Code: "I don't remember our last conversation"
+- Codex: "Starting fresh"
+- Cursor: New session, blank slate
+- ChatGPT: "Sorry, I can't see previous conversations"
+
+You lose context. You re-explain. You re-debug.
+
+AgentLog is the **context bridge** — a persistent, searchable log that spans all your AI tools.
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| 📁 **File Tracking** | Every file created, modified, or deleted |
+| 💻 **Command Log** | Every command executed |
+| 🔀 **Git Integration** | Commits with messages and branches |
+| 🔌 **API Calls** | External API calls made |
+| 🔍 **Full-Text Search** | Search across all sessions and tools |
+| 📋 **Session Summary** | One-page handoff document |
+| 🔄 **Cross-Platform** | Works with Claude Code, Codex, Cursor, Hermes, ChatGPT |
+
+## Quick Start
+
+### Installation
+
+```bash
+pip install agentlog
+# OR from source:
+git clone https://github.com/a918124259a/agentlog.git
+cd agentlog && pip install -e .
+```
+
+### First Session
+
+```bash
+# Start tracking
+agentlog init
+
+# Work as usual, but log key actions:
+agentlog track file src/feature.py --operation created
+agentlog track command 'python manage.py test'
+agentlog track note 'Found the root cause — null pointer in config parser'
+
+# Check progress
+agentlog status
+
+# Search later
+agentlog search 'root cause'
+```
+
+### Session Handoff
+
+When switching between tools (e.g., Claude Code → Cursor → back to Claude):
+
+```bash
+# Before leaving, generate a summary:
+agentlog summary
+# Copy-paste this into your next AI session
+
+# When you return, search for context:
+agentlog search 'what was I working on'
+```
+
+## Integrations
+
+Auto-log your AI agent actions without lifting a finger.
+
+### Shell Hook (Bash/Zsh/Fish)
+
+Automatically log every command you run:
+
+```bash
+# Activate in current terminal
+source <(agentlog-hook bash)
+
+# Now every command is auto-logged!
+npm install           # → agentlog track command 'npm install'
+python test.py        # → agentlog track command 'python test.py'
+git push              # → agentlog track command 'git push'
+```
+
+Add to your `~/.bashrc` or `~/.zshrc` to make it permanent:
+
+```bash
+# ~/.bashrc
+source <(agentlog-hook bash)
+```
+
+### Git Post-Commit Hook
+
+Auto-log every commit with message, hash, and branch:
+
+```bash
+# Install in your repo
+cp hooks/post-commit .git/hooks/post-commit
+chmod +x .git/hooks/post-commit
+# Now every commit is auto-logged in AgentLog
+```
+
+### For Your AI Tools
+
+Add to your `CLAUDE.md` or `AI.md` project file:
+
+```markdown
+## Logging
+- Before ending sessions, run: `agentlog summary`
+- After significant changes: `agentlog track file <path> --operation modified`
+- After running tests: `agentlog track command 'pytest ...'`
+- After commits (auto-logged via git hook)
+```
+
+### As a Session Handoff
+
+When switching between Claude Code, Codex, and Cursor:
+
+```bash
+# Before switching, generate a summary:
+agentlog summary
+# Copy-paste into the new AI tool
+# "Here's what happened in my last session..."
+```
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `agentlog init` | Start a new session |
+| `agentlog track file <path>` | Log a file change |
+| `agentlog track command <cmd>` | Log a command |
+| `agentlog track note <text>` | Add a freeform note |
+| `agentlog track git <msg> --hash <h>` | Log a git commit |
+| `agentlog track api <url>` | Log an API call |
+| `agentlog status` | Current session overview |
+| `agentlog watch [dir]` | Watch directory for file changes |
+| `agentlog tui` | Interactive terminal dashboard |
+| `agentlog search <query>` | Search all history |
+| `agentlog summary [session_id]` | Generate handoff doc |
+| `agentlog sessions` | List all sessions |
+| `agentlog export json [id]` | Export as JSON |
+| `agentlog export obsidian [id]` | Export as Obsidian note |
+| `agentlog export markdown [id]` | Export as Markdown |
+
+## Data Storage
+
+All data is stored locally in `~/.agentlog.db` (SQLite). Your data never leaves your machine.
+
+```sql
+-- Tables: sessions, actions, files, git_commits
+-- Portable: just copy the .db file
+```
+
+## Support & Donate
+
+If AgentLog saves you time, consider supporting further development:
+
+**GitHub Sponsors:** https://github.com/sponsors/a918124259a
+
+**Crypto Donations:**
+- **ETH / ERC-20:** `0x12b0800Fc8fBB4EBc35576fe1b322F19B3cDb1D6`
+- **USDT (TRC-20):** Contact via [Telegram](https://t.me/liaodengwanbot)
+
+**Other Methods:** WeChat Pay / Alipay available via [Telegram](https://t.me/liaodengwanbot)
+
+---
+
+## License
+
+MIT — free to use, modify, and distribute.
+
+---
+
+<p align="center">
+  <b>Built with ❤️ for developers tired of repeating themselves to AI</b><br>
+  <a href="https://github.com/a918124259a/agentlog">GitHub</a> ·
+  <a href="https://github.com/a918124259a/agentlog/issues">Issues</a> ·
+  <a href="#support--donate">Support</a>
+</p>

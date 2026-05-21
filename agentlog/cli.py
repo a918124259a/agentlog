@@ -490,6 +490,55 @@ def cmd_export(args, conn):
     return 0
 
 
+def cmd_end(args, conn):
+    """End the current session."""
+    session = get_active_session(conn)
+    if not session:
+        print("📭 No active session to end.")
+        return
+    
+    conn.execute(
+        "UPDATE sessions SET ended_at = ? WHERE id = ?",
+        (time.time(), session["id"])
+    )
+    conn.commit()
+    
+    # Generate final summary
+    duration = format_duration(session["started_at"], time.time())
+    print(f"⏹️  Session ended: {session['id']}")
+    print(f"   Duration: {duration}")
+    print(f"   Run 'agentlog summary {session['id']}' to review")
+
+
+def cmd_delete(args, conn):
+    """Delete a session and its data."""
+    session_id = args.session_id
+    if not session_id:
+        # Delete active session
+        session = get_active_session(conn)
+        if session:
+            session_id = session["id"]
+        else:
+            print("❌ No session specified and no active session.")
+            print("   Usage: agentlog delete <session_id>")
+            return 1
+    
+    if not args.force:
+        print(f"⚠️  Delete session {session_id} and all its data?")
+        confirm = input("   Type 'yes' to confirm: ")
+        if confirm.lower() not in ("y", "yes"):
+            print("Cancelled.")
+            return
+    
+    conn.execute("DELETE FROM actions WHERE session_id = ?", (session_id,))
+    conn.execute("DELETE FROM files WHERE session_id = ?", (session_id,))
+    conn.execute("DELETE FROM git_commits WHERE session_id = ?", (session_id,))
+    conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+    conn.commit()
+    
+    print(f"🗑️  Deleted session: {session_id}")
+
+
 def cmd_status(args, conn):
     """Show current session status."""
     session = get_active_session(conn)
@@ -779,6 +828,14 @@ Examples:
     p_export.add_argument("format", choices=["json", "obsidian", "markdown"], help="Export format")
     p_export.add_argument("session_id", nargs="?", help="Session ID (defaults to active)")
     
+    # end
+    subparsers.add_parser("end", help="End current session")
+    
+    # delete
+    p_delete = subparsers.add_parser("delete", help="Delete a session")
+    p_delete.add_argument("session_id", nargs="?", help="Session ID (defaults to active)")
+    p_delete.add_argument("--force", "-f", action="store_true", help="Skip confirmation")
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -797,6 +854,8 @@ Examples:
         "watch": cmd_watch,
         "tui": cmd_tui,
         "export": cmd_export,
+        "end": cmd_end,
+        "delete": cmd_delete,
     }
     
     try:
