@@ -100,25 +100,61 @@ agentlog search 'what was I working on'
 
 ## Integrations
 
-### Claude Code
+Auto-log your AI agent actions without lifting a finger.
 
-Add to your `CLAUDE.md`:
+### Shell Hook (Bash/Zsh/Fish)
 
-```markdown
-## Session Logging
-- Before ending each session, run: `agentlog summary`
-- Log key changes with: `agentlog track file <path>`
-- Track commands with: `agentlog track command '<cmd>'`
-```
-
-### Hermes Agent (auto-logging)
-
-Add to your `.env` or cron setup:
+Automatically log every command you run:
 
 ```bash
-alias track='agentlog track'
-# Auto-log every command
-preexec() { agentlog track command "$1"; }
+# Activate in current terminal
+source <(agentlog-hook bash)
+
+# Now every command is auto-logged!
+npm install           # → agentlog track command 'npm install'
+python test.py        # → agentlog track command 'python test.py'
+git push              # → agentlog track command 'git push'
+```
+
+Add to your `~/.bashrc` or `~/.zshrc` to make it permanent:
+
+```bash
+# ~/.bashrc
+source <(agentlog-hook bash)
+```
+
+### Git Post-Commit Hook
+
+Auto-log every commit with message, hash, and branch:
+
+```bash
+# Install in your repo
+cp hooks/post-commit .git/hooks/post-commit
+chmod +x .git/hooks/post-commit
+# Now every commit is auto-logged in AgentLog
+```
+
+### For Your AI Tools
+
+Add to your `CLAUDE.md` or `AI.md` project file:
+
+```markdown
+## Logging
+- Before ending sessions, run: `agentlog summary`
+- After significant changes: `agentlog track file <path> --operation modified`
+- After running tests: `agentlog track command 'pytest ...'`
+- After commits (auto-logged via git hook)
+```
+
+### As a Session Handoff
+
+When switching between Claude Code, Codex, and Cursor:
+
+```bash
+# Before switching, generate a summary:
+agentlog summary
+# Copy-paste into the new AI tool
+# "Here's what happened in my last session..."
 ```
 
 ## Commands
