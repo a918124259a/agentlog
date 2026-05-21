@@ -190,6 +190,306 @@ def cmd_track(args, conn):
     conn.commit()
 
 
+def cmd_watch(args, conn):
+    """Watch a directory for file changes and auto-log them."""
+    import os
+    import hashlib
+    import time as time_module
+    from pathlib import Path
+    
+    watch_path = os.path.abspath(args.path)
+    if not os.path.isdir(watch_path):
+        print(f"❌ Not a directory: {watch_path}")
+        return 1
+    
+    # Get or create session
+    session = get_active_session(conn)
+    if not session:
+        session_id = str(uuid.uuid4())[:8]
+        conn.execute(
+            "INSERT INTO sessions (id, tool, started_at, project) VALUES (?, ?, ?, ?)",
+            (session_id, "file-watcher", time.time(), os.path.basename(watch_path))
+        )
+        conn.commit()
+        session = get_active_session(conn)
+    
+    # Build initial file state
+    file_state = {}
+    for root, dirs, files in os.walk(watch_path):
+        # Skip hidden dirs
+        dirs[:] = [d for d in dirs if not d.startswith('.') and d != '__pycache__' and d != 'node_modules']
+        for f in files:
+            if f.startswith('.'):
+                continue
+            path = os.path.join(root, f)
+            try:
+                stat = os.stat(path)
+                file_state[path] = (stat.st_mtime, stat.st_size)
+            except:
+                pass
+    
+    interval = args.interval or 2.0
+    print(f"👁️  Watching: {watch_path}")
+    print(f"   Interval: {interval}s")
+    print(f"   Session:  {session['id']}")
+    print(f"   Files tracked: {len(file_state)}")
+    print(f"   Press Ctrl+C to stop")
+    print()
+    
+    try:
+        while True:
+            current_state = {}
+            for root, dirs, files in os.walk(watch_path):
+                dirs[:] = [d for d in dirs if not d.startswith('.') and d != '__pycache__' and d != 'node_modules']
+                for f in files:
+                    if f.startswith('.'):
+                        continue
+                    path = os.path.join(root, f)
+                    try:
+                        stat = os.stat(path)
+                        current_state[path] = (stat.st_mtime, stat.st_size)
+                    except:
+                        pass
+            
+            # Check for new/modified files
+            for path, state in current_state.items():
+                if path not in file_state:
+                    operation = "created"
+                elif state != file_state[path]:
+                    operation = "modified"
+                else:
+                    continue
+                
+                rel_path = os.path.relpath(path, watch_path)
+                conn.execute(
+                    "INSERT INTO files (session_id, timestamp, operation, file_path) VALUES (?, ?, ?, ?)",
+                    (session['id'], time.time(), operation, path)
+                )
+                conn.commit()
+                print(f"  {time_module.strftime('%H:%M:%S')} {operation.upper():8} {rel_path}")
+            
+            # Check for deleted files
+            for path in file_state:
+                if path not in current_state:
+                    rel_path = os.path.relpath(path, watch_path)
+                    conn.execute(
+                        "INSERT INTO files (session_id, timestamp, operation, file_path) VALUES (?, ?, ?, ?)",
+                        (session['id'], time.time(), "deleted", path)
+                    )
+                    conn.commit()
+                    print(f"  {time_module.strftime('%H:%M:%S')} DELETED    {rel_path}")
+            
+            file_state = current_state
+            time_module.sleep(interval)
+    
+    except KeyboardInterrupt:
+        print()
+        print(f"⏹️  Watch stopped. Total files tracked: {len(file_state)}")
+        return 0
+
+
+def cmd_tui(args, conn):
+    """Interactive terminal dashboard."""
+    import shutil
+    
+    try:
+        while True:
+            terminal_width = shutil.get_terminal_size().columns
+            print("=" * min(terminal_width, 60))
+            print("  AgentLog Dashboard")
+            print("=" * min(terminal_width, 60))
+            print()
+            
+            # Active session
+            session = get_active_session(conn)
+            if session:
+                action_count = conn.execute(
+                    "SELECT COUNT(*) as c FROM actions WHERE session_id = ?", (session["id"],)
+                ).fetchone()["c"]
+                file_count = conn.execute(
+                    "SELECT COUNT(*) as c FROM files WHERE session_id = ?", (session["id"],)
+                ).fetchone()["c"]
+                commit_count = conn.execute(
+                    "SELECT COUNT(*) as c FROM git_commits WHERE session_id = ?", (session["id"],)
+                ).fetchone()["c"]
+                
+                print(f"  🟢 Active Session: {session['id']}")
+                print(f"     Tool:    {session['tool']}")
+                print(f"     Project: {session['project'] or '(none)'}")
+                print(f"     Actions: {action_count}  Files: {file_count}  Commits: {commit_count}")
+                print(f"     Duration: {format_duration(session['started_at'])}")
+            else:
+                print(f"  📭 No active session")
+                print(f"     Run 'agentlog init' to start one")
+            print()
+            
+            # Stats
+            total_sessions = conn.execute("SELECT COUNT(*) as c FROM sessions").fetchone()["c"]
+            total_actions = conn.execute("SELECT COUNT(*) as c FROM actions").fetchone()["c"]
+            total_files = conn.execute("SELECT COUNT(*) as c FROM files").fetchone()["c"]
+            total_commits = conn.execute("SELECT COUNT(*) as c FROM git_commits").fetchone()["c"]
+            
+            print(f"  📊 Lifetime Stats")
+            print(f"     Sessions: {total_sessions}  Actions: {total_actions}  Files: {total_files}  Commits: {total_commits}")
+            print()
+            
+            # Recent actions
+            recent = conn.execute(
+                "SELECT a.*, s.tool FROM actions a JOIN sessions s ON a.session_id = s.id ORDER BY a.timestamp DESC LIMIT 5"
+            ).fetchall()
+            
+            if recent:
+                print(f"  🔄 Recent Actions")
+                for a in recent:
+                    ts = format_timestamp(a["timestamp"]).split()[1]  # Just the time part
+                    desc = a["description"][:terminal_width - 30]
+                    print(f"     [{ts}] [{a['tool']:10}] {desc}")
+            print()
+            
+            print("  Press Ctrl+C to exit")
+            time.sleep(3)
+    except KeyboardInterrupt:
+        print("\nExiting dashboard.")
+        return 0
+
+
+def cmd_export(args, conn):
+    """Export sessions in various formats."""
+    session_id = args.session_id
+    
+    if session_id:
+        session = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
+        if not session:
+            print(f"❌ Session not found: {session_id}")
+            return 1
+        sessions_to_export = [session]
+    else:
+        sessions_to_export = conn.execute(
+            "SELECT * FROM sessions ORDER BY started_at DESC LIMIT 10"
+        ).fetchall()
+    
+    fmt = args.format
+    
+    if fmt == "json":
+        import json
+        export_data = []
+        for s in sessions_to_export:
+            actions = conn.execute(
+                "SELECT * FROM actions WHERE session_id = ? ORDER BY timestamp", (s["id"],)
+            ).fetchall()
+            files = conn.execute(
+                "SELECT * FROM files WHERE session_id = ? ORDER BY timestamp", (s["id"],)
+            ).fetchall()
+            commits = conn.execute(
+                "SELECT * FROM git_commits WHERE session_id = ? ORDER BY timestamp", (s["id"],)
+            ).fetchall()
+            
+            export_data.append({
+                "session": dict(s),
+                "actions": [dict(a) for a in actions],
+                "files": [dict(f) for f in files],
+                "commits": [dict(c) for c in commits],
+            })
+        
+        print(json.dumps(export_data, indent=2, default=str))
+    
+    elif fmt == "obsidian":
+        for s in sessions_to_export:
+            actions = conn.execute(
+                "SELECT * FROM actions WHERE session_id = ? ORDER BY timestamp", (s["id"],)
+            ).fetchall()
+            files = conn.execute(
+                "SELECT * FROM files WHERE session_id = ? ORDER BY timestamp", (s["id"],)
+            ).fetchall()
+            commits = conn.execute(
+                "SELECT * FROM git_commits WHERE session_id = ? ORDER BY timestamp", (s["id"],)
+            ).fetchall()
+            
+            # Generate Obsidian-compatible markdown
+            lines = [
+                "---",
+                f"session_id: {s['id']}",
+                f"tool: {s['tool']}",
+                f"project: {s['project'] if s['project'] else ''}",
+                f"started: {format_timestamp(s['started_at'])}",
+                "---",
+                "",
+                f"# Session: {s['id']}",
+                "",
+                f"**Tool:** {s['tool']}  ",
+                f"**Project:** {s['project'] if s['project'] else '(none)'}  ",
+                f"**Started:** {format_timestamp(s['started_at'])}  ",
+                "",
+            ]
+            
+            if commits:
+                lines.append("## Git Commits")
+                for c in commits:
+                    h = c['hash'][:8] if c['hash'] else "?"
+                    lines.append(f"- [`{h}`] {c['message']}")
+                lines.append("")
+            
+            if files:
+                lines.append("## Files Changed")
+                for f in files:
+                    lines.append(f"- {f['operation'].upper()}: `{f['file_path']}`")
+                lines.append("")
+            
+            if actions:
+                lines.append("## Action Log")
+                for a in actions:
+                    ts = format_timestamp(a["timestamp"]).split()[1]
+                    lines.append(f"- [{ts}] **{a['action_type']}**: {a['description']}")
+                lines.append("")
+            
+            print("\n".join(lines))
+    
+    elif fmt == "markdown":
+        for s in sessions_to_export:
+            actions = conn.execute(
+                "SELECT * FROM actions WHERE session_id = ? ORDER BY timestamp", (s["id"],)
+            ).fetchall()
+            files = conn.execute(
+                "SELECT * FROM files WHERE session_id = ? ORDER BY timestamp", (s["id"],)
+            ).fetchall()
+            commits = conn.execute(
+                "SELECT * FROM git_commits WHERE session_id = ? ORDER BY timestamp", (s["id"],)
+            ).fetchall()
+            
+            lines = [
+                f"# AgentLog Session: {s['id']}",
+                "",
+                f"- **Tool:** {s['tool']}",
+                f"- **Project:** {s['project'] if s['project'] else '(none)'}",
+                f"- **Started:** {format_timestamp(s['started_at'])}",
+                "",
+            ]
+            
+            if commits:
+                lines.append("## Commits")
+                for c in commits:
+                    h = c['hash'][:8] if c['hash'] else "?"
+                    lines.append(f"- [{h}] {c['message']}")
+                lines.append("")
+            
+            if files:
+                lines.append("## Files")
+                for f in files:
+                    lines.append(f"- {f['operation']}: `{f['file_path']}`")
+                lines.append("")
+            
+            if actions:
+                lines.append("## Actions")
+                for a in actions:
+                    ts = format_timestamp(a["timestamp"]).split()[1]
+                    lines.append(f"- [{ts}] {a['action_type']}: {a['description']}")
+                lines.append("")
+            
+            print("\n".join(lines))
+    
+    return 0
+
+
 def cmd_status(args, conn):
     """Show current session status."""
     session = get_active_session(conn)
@@ -463,6 +763,19 @@ Examples:
     p_summary = subparsers.add_parser("summary", help="Generate session summary")
     p_summary.add_argument("session_id", nargs="?", help="Session ID (defaults to active)")
     
+    # watch
+    p_watch = subparsers.add_parser("watch", help="Watch directory for auto-logging")
+    p_watch.add_argument("path", nargs="?", default=".", help="Directory to watch")
+    p_watch.add_argument("--interval", "-i", type=float, default=2.0, help="Poll interval (seconds)")
+    
+    # tui
+    subparsers.add_parser("tui", help="Interactive dashboard")
+    
+    # export
+    p_export = subparsers.add_parser("export", help="Export sessions")
+    p_export.add_argument("format", choices=["json", "obsidian", "markdown"], help="Export format")
+    p_export.add_argument("session_id", nargs="?", help="Session ID (defaults to active)")
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -478,6 +791,9 @@ Examples:
         "search": cmd_search,
         "sessions": cmd_sessions,
         "summary": cmd_summary,
+        "watch": cmd_watch,
+        "tui": cmd_tui,
+        "export": cmd_export,
     }
     
     try:
