@@ -1,7 +1,9 @@
 MANIFEST.in
+README.md
 setup.py
 agentlog/__init__.py
 agentlog/cli.py
+agentlog/hook.py
 agentlog.egg-info/PKG-INFO
 agentlog.egg-info/SOURCES.txt
 agentlog.egg-info/dependency_links.txt

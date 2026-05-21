@@ -10,6 +10,7 @@ setup(
     entry_points={
         "console_scripts": [
             "agentlog=agentlog.cli:main",
+            "agentlog-hook=agentlog.hook:main",
         ],
     },
 )

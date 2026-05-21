@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# AgentLog Git Post-Commit Hook
+# Install: cp hooks/post-commit /path/to/repo/.git/hooks/post-commit
+# Auto-logs commits with diff summary to AgentLog
+
+COMMIT_HASH=$(git rev-parse HEAD 2>/dev/null)
+COMMIT_MSG=$(git log -1 --pretty=%s 2>/dev/null)
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
+# Only log if agentlog is installed and session active
+if command -v agentlog &>/dev/null; then
+    if agentlog status &>/dev/null 2>&1; then
+        agentlog track git "$COMMIT_MSG" --hash "$COMMIT_HASH" --branch "$BRANCH"
+    fi
+fi
