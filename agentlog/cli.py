@@ -725,8 +725,11 @@ Examples:
   agentlog track note 'Found bug'  Add a note
   agentlog track git 'Fix login' --hash abc123  Log a commit
   agentlog status                  Check current session
+  agentlog tui                     Interactive dashboard
+  agentlog watch .                 Auto-watch directory for changes
   agentlog search 'auth error'     Search history
   agentlog summary                 Generate handoff document
+  agentlog export obsidian         Export to Obsidian format
   agentlog sessions                List recent sessions
         """
     )
