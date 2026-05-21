@@ -168,9 +168,14 @@ agentlog summary
 | `agentlog track git <msg> --hash <h>` | Log a git commit |
 | `agentlog track api <url>` | Log an API call |
 | `agentlog status` | Current session overview |
+| `agentlog watch [dir]` | Watch directory for file changes |
+| `agentlog tui` | Interactive terminal dashboard |
 | `agentlog search <query>` | Search all history |
 | `agentlog summary [session_id]` | Generate handoff doc |
 | `agentlog sessions` | List all sessions |
+| `agentlog export json [id]` | Export as JSON |
+| `agentlog export obsidian [id]` | Export as Obsidian note |
+| `agentlog export markdown [id]` | Export as Markdown |
 
 ## Data Storage
 
