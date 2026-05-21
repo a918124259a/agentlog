@@ -145,26 +145,19 @@ All data is stored locally in `~/.agentlog.db` (SQLite). Your data never leaves 
 -- Portable: just copy the .db file
 ```
 
-## Roadmap
+## Support & Donate
 
-- [x] Core CLI with SQLite storage
-- [x] Session init, track, status, search, summary
-- [x] File, command, note, API, git action types
-- [ ] Auto-detect AI tools via environment
-- [ ] Web dashboard for browsing logs
-- [ ] Cloud sync (Pro tier)
-- [ ] Team sharing (Enterprise tier)
-- [ ] SOC2/ISO audit export
-- [ ] VS Code extension
-- [ ] Claude Code MCP server
+If AgentLog saves you time, consider supporting further development:
 
-## Pricing
+**GitHub Sponsors:** https://github.com/sponsors/a918124259a
 
-| Plan | Price | Features |
-|------|-------|----------|
-| **Free** | $0 | Local CLI, full search, unlimited sessions |
-| **Pro** | $9/mo | Cloud sync, web dashboard, export to JSON/CSV |
-| **Enterprise** | $49/mo | Team sharing, SOC2 export, RBAC, SSO |
+**Crypto Donations:**
+- **ETH / ERC-20:** `0x12b0800Fc8fBB4EBc35576fe1b322F19B3cDb1D6`
+- **USDT (TRC-20):** Contact via [Telegram](https://t.me/liaodengwanbot)
+
+**Other Methods:** WeChat Pay / Alipay available via [Telegram](https://t.me/liaodengwanbot)
+
+---
 
 ## License
 
@@ -175,5 +168,6 @@ MIT — free to use, modify, and distribute.
 <p align="center">
   <b>Built with ❤️ for developers tired of repeating themselves to AI</b><br>
   <a href="https://github.com/a918124259a/agentlog">GitHub</a> ·
-  <a href="https://github.com/a918124259a/agentlog/issues">Issues</a>
+  <a href="https://github.com/a918124259a/agentlog/issues">Issues</a> ·
+  <a href="#support--donate">Support</a>
 </p>
